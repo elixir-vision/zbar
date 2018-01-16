@@ -5,18 +5,14 @@
 # CFLAGS        compiler flags for compiling all C files
 # LDFLAGS       linker flags for linking all binaries
 
-# Initialize some variables if not set
-LDFLAGS ?=
-CFLAGS ?= -O2 -Wall -Wextra -Wno-unused-parameter -g
+LDFLAGS += -lzbar -ljpeg
+CFLAGS += -Wall -std=gnu99
 CC ?= $(CROSSCOMPILE)-gcc
-
-DEFAULT_TARGETS ?= priv priv/zbar_scanner
-
-# Link in all of the VideoCore libraries
-LDFLAGS +=-lzbar -ljpeg
 
 SRC=src/zbar_scanner.c
 OBJ=$(SRC:.c=.o)
+
+DEFAULT_TARGETS ?= priv priv/zbar_scanner
 
 .PHONY: all clean
 

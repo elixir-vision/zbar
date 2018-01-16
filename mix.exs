@@ -4,7 +4,10 @@ defmodule Zbar.Mixfile do
   def project do
     [app: :zbar,
      version: "0.1.0",
+     description: "Scan one or more barcodes from a JPEG image",
      elixir: "~> 1.4",
+     make_clean: ["clean"],
+     compilers: [:elixir_make | Mix.compilers()],
      build_embedded: Mix.env == :prod,
      start_permanent: Mix.env == :prod,
      compilers: [:elixir_make] ++ Mix.compilers,
@@ -29,6 +32,6 @@ defmodule Zbar.Mixfile do
   #
   # Type "mix help deps" for more examples and options
   defp deps do
-    []
+    [{:elixir_make, "~> 0.4", runtime: false}]
   end
 end
