@@ -7,6 +7,8 @@
 #include <jpeglib.h>
 #include <zbar.h>
 
+#include "base64.h"
+
 #define zbar_fourcc(a, b, c, d)                 \
         ((unsigned long)(a) |                   \
          ((unsigned long)(b) << 8) |            \
@@ -81,8 +83,12 @@ int main (int argc, char **argv)
   const zbar_symbol_t *symbol = zbar_image_first_symbol(image);
   for(; symbol; symbol = zbar_symbol_next(symbol)) {
       zbar_symbol_type_t typ = zbar_symbol_get_type(symbol);
+      unsigned int length = zbar_symbol_get_data_length(symbol);
       const char *data = zbar_symbol_get_data(symbol);
-      printf("Found %s barcode: \"%s\"\n", zbar_get_symbol_name(typ), data);
+      int base64_length;
+      char * base64_data = base64(data, length, &base64_length);
+      printf("%s: %s\n", zbar_get_symbol_name(typ), base64_data);
+      free(base64_data);
   }
 
   zbar_image_destroy(image);
