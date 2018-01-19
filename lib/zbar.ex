@@ -14,7 +14,22 @@ defmodule Zbar do
     {:error, string} if there was an error in the scanning process
   """
   def scan(jpeg_data, timeout \\ 2000) do
+    # We run this is a `Task` so that `collect_output` can use `receive`
+    # without interfering with the caller's mailbox.
+    Task.async(fn ->
+      write_image_to_temp_file(jpeg_data)
+      open_zbar_port()
+      |> collect_output(timeout)
+      |> format_result()
+    end)
+    |> Task.await(:infinity)
+  end
+
+  defp write_image_to_temp_file(jpeg_data) do
     File.open!(temp_file(), [:write, :binary], & IO.binwrite(&1, jpeg_data))
+  end
+
+  defp open_zbar_port do
     {:spawn_executable, zbar_binary()}
     |> Port.open([
       {:args, [temp_file()]},
@@ -24,8 +39,6 @@ defmodule Zbar do
       :use_stdio,
       :stderr_to_stdout
     ])
-    |> collect_output(timeout)
-    |> format_result()
   end
 
   defp temp_file, do: Path.join(System.tmp_dir!(), "zbar_image.jpg")
