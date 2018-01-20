@@ -48,7 +48,6 @@ defmodule Zbar do
   defp collect_output(port, timeout, buffer \\ "") do
     receive do
       {^port, {:data, data}} ->
-        IO.inspect(Base.encode64(to_string(data)), label: "  <Received")
         collect_output(port, timeout, buffer <> to_string(data))
       {^port, {:exit_status, 0}} ->
         {:ok, buffer}

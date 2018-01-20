@@ -82,13 +82,26 @@ int main (int argc, char **argv)
 
   const zbar_symbol_t *symbol = zbar_image_first_symbol(image);
   for(; symbol; symbol = zbar_symbol_next(symbol)) {
-      zbar_symbol_type_t typ = zbar_symbol_get_type(symbol);
-      unsigned int length = zbar_symbol_get_data_length(symbol);
-      const char *data = zbar_symbol_get_data(symbol);
-      int base64_length;
-      char * base64_data = base64(data, length, &base64_length);
-      printf("%s: %s\n", zbar_get_symbol_name(typ), base64_data);
-      free(base64_data);
+    printf(
+      "type:%s quality:%i points:",
+      zbar_get_symbol_name(zbar_symbol_get_type(symbol)),
+      zbar_symbol_get_quality(symbol)
+    );
+    unsigned int point_count = zbar_symbol_get_loc_size(symbol);
+    for(int i = 0; i < point_count; i++) {
+      printf(
+        "%i,%i",
+        zbar_symbol_get_loc_x(symbol, i),
+        zbar_symbol_get_loc_y(symbol, i)
+      );
+      if (i+1 < point_count) printf(";");
+    }
+    const char *data = zbar_symbol_get_data(symbol);
+    unsigned int data_length = zbar_symbol_get_data_length(symbol);
+    int base64_length;
+    char * base64_data = base64(data, data_length, &base64_length);
+    printf(" data:%s\n", base64_data);
+    free(base64_data);
   }
 
   zbar_image_destroy(image);
