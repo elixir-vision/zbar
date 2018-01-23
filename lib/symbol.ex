@@ -1,37 +1,56 @@
 defmodule Zbar.Symbol do
-  alias __MODULE__
+  @moduledoc """
+  The `Zbar.Symbol` struct represents a barcode that has been detected by `zbar`.
 
-  defstruct [:type, :quality, :points, :data]
+  It has the following fields:
 
-  def parse(string) do
-    string
-    |> String.split(" ")
-    |> Enum.reduce(%Symbol{}, fn item, acc ->
-      [key, value] = String.split(item, ":", parts: 2)
-      case key do
-        "type" ->
-          %Symbol{acc | type: value}
+  * `type`: The type of barcode that has been detected, as a string. Possible
+    values are listed in `t:type_enum/0`
 
-        "quality" ->
-          %Symbol{acc | quality: String.to_integer(value)}
+  * `quality`: An integer metric representing barcode scan confidence.
 
-        "points" ->
-          %Symbol{acc | points: parse_points(value)}
+    Larger values are better than smaller values, but only the ordered
+    relationship between two values is meaningful. The values themselves
+    are not defined and may change in future versions of the library.
 
-          "data" ->
-            %Symbol{acc | data: Base.decode64!(value)}
-      end
-    end)
-  end
+  * `points`: The list of coordinates (encoded as `{x, y}` tuples) where a
+    barcode was located within the source image.
 
-  defp parse_points(string) do
-    string
-    |> String.split(";")
-    |> Enum.map(& parse_point/1)
-  end
+    The structure of the points depends on the type of barcode being scanned.
+    For example, for the `QR-Code` type, the points represent the bounding
+    rectangle, with the first point indicating the top-left positioning pattern
+    of the QR-Code if it had not been rotated.
 
-  defp parse_point(string) do
-    [x, y] = String.split(string, ",", parts: 2)
-    {String.to_integer(x), String.to_integer(y)}
-  end
+  * `data`: The actual barcode data, as a binary string.
+
+    Note that this is a string that may contain arbitrary binary data,
+    including non-printable characters.
+  """
+
+  defstruct type: :UNKNOWN, quality: 0, points: [], data: nil
+
+  @type type_enum ::
+        :CODE_39
+        | :CODE_128
+        | :EAN_8
+        | :EAN_13
+        | :I2_5
+        | :ISBN_10
+        | :ISBN_13
+        | :PDF417
+        | :QR_Code
+        | :UPC_A
+        | :UPC_E
+        | :UNKNOWN
+
+  @type point :: {non_neg_integer(), non_neg_integer()}
+
+  @typedoc @moduledoc
+  @type t :: %__MODULE__{
+    type: type_enum(),
+    quality: non_neg_integer(),
+    points: [point()],
+    data: binary()
+  }
+
 end

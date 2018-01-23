@@ -1,11 +1,26 @@
 # Zbar
 
-**TODO: Add description**
+Scan one or more barcodes from a JPEG image.
+
+The API for this library is very simple:
+
+```elixir
+iex> File.read!("QR_REF1.jpg") |> Zbar.scan()
+%Zbar.Symbol{
+  data: "REF1",
+  points: [{40, 40}, {40, 250}, {250, 250}, {250, 40}],
+  quality: 1,
+  type: "QR-Code"
+}
+```
+
+More detailed API documentation can be found at
+[https://hexdocs.pm/zbar](https://hexdocs.pm/zbar).
 
 ## Installation
 
-If [available in Hex](https://hex.pm/docs/publish), the package can be installed
-by adding `zbar` to your list of dependencies in `mix.exs`:
+This library can be installed by adding `zbar` to your list of dependencies in
+`mix.exs`:
 
 ```elixir
 def deps do
@@ -13,7 +28,9 @@ def deps do
 end
 ```
 
-Documentation can be generated with [ExDoc](https://github.com/elixir-lang/ex_doc)
-and published on [HexDocs](https://hexdocs.pm). Once published, the docs can
-be found at [https://hexdocs.pm/zbar](https://hexdocs.pm/zbar).
+You will also need to have `zbar` and `libjpeg` installed in order to compile
+the required native code. On OSX with Homebrew, this is as simple as:
 
+```bash
+$ brew install zbar libjpeg
+```

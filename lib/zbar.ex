@@ -1,6 +1,6 @@
 defmodule Zbar do
   @moduledoc """
-  Scan all barcodes in a JPEG image using the zbar library.
+  Scan all barcodes in a JPEG image using the `zbar` library.
   """
 
   alias Zbar.Symbol
@@ -8,27 +8,46 @@ defmodule Zbar do
   require Logger
 
   @doc """
+  Scan all barcode data in a JPEG-encoded image.
+
+  * `jpeg_data` should be a binary containing JPEG-encoded image data.
+  * `timeout` is the time in milliseconds to allow for the processing of the image
+  (default 5000 milliseconds).
+
   Returns:
-    {:ok, [%Zbar.Symbol{}, ...]} on success
-    {:error, :timeout} if the zbar process hung for some reason
-    {:error, string} if there was an error in the scanning process
+  *  `{:ok, [%Zbar.Symbol{}]}` on success
+  *  `{:error, :timeout}` if the zbar process hung for some reason
+  *  `{:error, binary()}` if there was an error in the scanning process
   """
-  def scan(jpeg_data, timeout \\ 2000) do
+  @spec scan(binary(), pos_integer()) ::
+        {:ok, list(Zbar.Symbol.t())}
+        | {:error, :timeout}
+        | {:error, binary()}
+        | no_return()
+  def scan(jpeg_data, timeout \\ 5000) do
     # We run this is a `Task` so that `collect_output` can use `receive`
     # without interfering with the caller's mailbox.
-    Task.async(fn ->
-      write_image_to_temp_file(jpeg_data)
-      open_zbar_port()
-      |> collect_output(timeout)
-      |> format_result()
-    end)
+    Task.async(fn -> do_scan(jpeg_data, timeout) end)
     |> Task.await(:infinity)
   end
 
+  @spec do_scan(binary(), pos_integer()) ::
+        {:ok, [Zbar.Symbol.t()]}
+        | {:error, :timeout}
+        | {:error, binary()}
+  defp do_scan(jpeg_data, timeout) do
+    write_image_to_temp_file(jpeg_data)
+    open_zbar_port()
+    |> collect_output(timeout)
+    |> format_result()
+  end
+
+  @spec write_image_to_temp_file(binary()) :: :ok | no_return()
   defp write_image_to_temp_file(jpeg_data) do
     File.open!(temp_file(), [:write, :binary], & IO.binwrite(&1, jpeg_data))
   end
 
+  @spec open_zbar_port() :: port()
   defp open_zbar_port do
     {:spawn_executable, zbar_binary()}
     |> Port.open([
@@ -41,10 +60,17 @@ defmodule Zbar do
     ])
   end
 
+  @spec temp_file() :: binary()
   defp temp_file, do: Path.join(System.tmp_dir!(), "zbar_image.jpg")
 
+  @spec zbar_binary() :: binary()
   defp zbar_binary, do: Path.join(:code.priv_dir(:zbar), "zbar_scanner")
 
+  @spec collect_output(port(), pos_integer(), binary()) ::
+        {:ok, binary()}
+        | {:error, :timeout}
+        | {:error, binary()}
+        | no_return()
   defp collect_output(port, timeout, buffer \\ "") do
     receive do
       {^port, {:data, data}} ->
@@ -53,17 +79,81 @@ defmodule Zbar do
         {:ok, buffer}
       {^port, {:exit_status, _}} ->
         {:error, buffer}
-    after timeout -> {:error, :timeout}
+    after timeout ->
+        Port.close(port)
+        {:error, :timeout}
     end
   end
 
+  # `output` is the complete multi-line output collected from the `port`.
+  @spec format_result({:ok | :error, binary()}) ::
+        {:ok, [Zbar.Symbol.t()]}
+        | {:error, binary()}
   defp format_result({:ok, output}) do
     symbols =
       output
       |> String.split("\n", trim: true)
-      |> Enum.map(&Symbol.parse/1)
+      |> Enum.map(&parse_symbol/1)
     {:ok, symbols}
   end
   defp format_result({:error, reason}), do: {:error, reason}
 
+  # Accepts strings like:
+  # type:QR-Code quality:1 points:40,40;40,250;250,250;250,40 data:UkVGMQ==
+  #
+  # Returns structs like:
+  # %Zbar.Symbol{
+  #   data: "REF1",
+  #   points: [{40, 40}, {40, 250}, {250, 250}, {250, 40}],
+  #   quality: 1,
+  #   type: "QR-Code"
+  # }
+  @spec parse_symbol(binary()) :: Zbar.Symbol.t()
+  defp parse_symbol(string) do
+    string
+    |> String.split(" ")
+    |> Enum.reduce(%Symbol{}, fn item, acc ->
+      [key, value] = String.split(item, ":", parts: 2)
+      case key do
+        "type" ->
+          %Symbol{acc | type: parse_type(value)}
+
+        "quality" ->
+          %Symbol{acc | quality: String.to_integer(value)}
+
+        "points" ->
+          %Symbol{acc | points: parse_points(value)}
+
+          "data" ->
+            %Symbol{acc | data: Base.decode64!(value)}
+      end
+    end)
+  end
+
+  @spec parse_type(binary()) :: Zbar.Symbol.type_enum()
+  defp parse_type("CODE-39"), do: :CODE_39
+  defp parse_type("CODE-128"), do: :CODE_128
+  defp parse_type("EAN-8"), do: :EAN_8
+  defp parse_type("EAN-13"), do: :EAN_13
+  defp parse_type("I2/5"), do: :I2_5
+  defp parse_type("ISBN-10"), do: :ISBN_10
+  defp parse_type("ISBN-13"), do: :ISBN_13
+  defp parse_type("PDF417"), do: :PDF417
+  defp parse_type("QR-Code"), do: :QR_Code
+  defp parse_type("UPC-A"), do: :UPC_A
+  defp parse_type("UPC-E"), do: :UPC_E
+  defp parse_type(_), do: :UNKNOWN
+
+  @spec parse_points(binary()) :: [Zbar.Symbol.point()]
+  defp parse_points(string) do
+    string
+    |> String.split(";")
+    |> Enum.map(& parse_point/1)
+  end
+
+  @spec parse_point(binary()) :: Zbar.Symbol.point()
+  defp parse_point(string) do
+    [x, y] = String.split(string, ",", parts: 2)
+    {String.to_integer(x), String.to_integer(y)}
+  end
 end
