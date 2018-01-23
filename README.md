@@ -19,8 +19,8 @@ More detailed API documentation can be found at
 
 ## Installation
 
-This library can be installed by adding `zbar` to your list of dependencies in
-`mix.exs`:
+This package is [available in Hex](https://hex.pm/packages/zbar) and can be
+installed by adding `:zbar` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
