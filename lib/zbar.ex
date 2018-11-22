@@ -73,6 +73,8 @@ defmodule Zbar do
         | no_return()
   defp collect_output(port, timeout, buffer \\ "") do
     receive do
+      {^port, {:data, "Premature end of JPEG file\n"}} -> #https://github.com/GregMefford/zbar-elixir/issues/1
+        collect_output(port, timeout, buffer)
       {^port, {:data, data}} ->
         collect_output(port, timeout, buffer <> to_string(data))
       {^port, {:exit_status, 0}} ->
@@ -124,8 +126,8 @@ defmodule Zbar do
         "points" ->
           %Symbol{acc | points: parse_points(value)}
 
-          "data" ->
-            %Symbol{acc | data: Base.decode64!(value)}
+        "data" ->
+          %Symbol{acc | data: Base.decode64!(value)}
       end
     end)
   end
