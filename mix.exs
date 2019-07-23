@@ -4,12 +4,13 @@ defmodule Zbar.Mixfile do
   def project do
     [
       app: :zbar,
-      version: "0.1.0",
+      version: "0.2.0-dev",
       description: "Scan one or more barcodes from a JPEG image",
       elixir: "~> 1.4",
+      make_targets: ["all"],
       make_clean: ["clean"],
       compilers: [:elixir_make | Mix.compilers()],
-      build_embedded: Mix.env == :prod,
+      build_embedded: true,
       start_permanent: Mix.env == :prod,
       compilers: [:elixir_make] ++ Mix.compilers,
       package: package(),
@@ -23,7 +24,7 @@ defmodule Zbar.Mixfile do
 
   defp deps do
     [
-      {:elixir_make, "~> 0.4", runtime: false},
+      {:elixir_make, "~> 0.6", runtime: false},
       {:dialyxir, "~> 0.5", only: :dev, runtime: false},
       {:ex_doc, "~> 0.16", only: :dev, runtime: false},
     ]
