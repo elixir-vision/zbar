@@ -4,28 +4,42 @@
 # CROSSCOMPILE  crosscompiler prefix, if any
 # CFLAGS        compiler flags for compiling all C files
 # LDFLAGS       linker flags for linking all binaries
+# MIX_COMPILE_PATH  path to the build's ebin directory
 
 LDFLAGS += -lzbar -ljpeg
 CFLAGS += -Wall -std=gnu99
 CC ?= $(CROSSCOMPILE)-gcc
 
+ifeq ($(MIX_COMPILE_PATH),)
+  $(error MIX_COMPILE_PATH should be set by elixir_make!)
+endif
+
+PREFIX = $(MIX_COMPILE_PATH)/../priv
+BUILD  = $(MIX_COMPILE_PATH)/../obj
+
 SRC=src/zbar_scanner.c
 OBJ=$(SRC:.c=.o)
 
-DEFAULT_TARGETS ?= priv priv/zbar_scanner
+DEFAULT_TARGETS ?= $(PREFIX) $(PREFIX)/zbar_scanner
 
-.PHONY: all clean
+calling_from_make:
+	mix compile
 
-all: $(DEFAULT_TARGETS)
+all: $(BUILD) $(DEFAULT_TARGETS)
 
-%.o: %.c
+$(BUILD)/%.o: src/%.c
 	$(CC) $(CFLAGS) -c $< -o $@
 
-priv:
-	mkdir -p priv
+$(BUILD):
+	mkdir -p $@
 
-priv/zbar_scanner: $(OBJ)
+$(PREFIX):
+	mkdir -p $@
+
+$(PREFIX)/zbar_scanner: $(BUILD)/zbar_scanner.o
 	$(CC) $^ $(LDFLAGS) -o $@
 
 clean:
-	rm -f priv/zbar_scanner $(OBJ)
+	rm -rf $(PREFIX)/* $(BUILD)/*
+
+.PHONY: all clean calling_from_make
