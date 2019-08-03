@@ -23,9 +23,8 @@ defmodule Zbar do
         {:ok, list(Zbar.Symbol.t())}
         | {:error, :timeout}
         | {:error, binary()}
-        | no_return()
   def scan(jpeg_data, timeout \\ 5000) do
-    # We run this is a `Task` so that `collect_output` can use `receive`
+    # We run this in a `Task` so that `collect_output` can use `receive`
     # without interfering with the caller's mailbox.
     Task.async(fn -> do_scan(jpeg_data, timeout) end)
     |> Task.await(:infinity)
@@ -36,20 +35,9 @@ defmodule Zbar do
         | {:error, :timeout}
         | {:error, binary()}
   defp do_scan(jpeg_data, timeout) do
-    write_image_to_temp_file(jpeg_data)
-    open_zbar_port()
-    |> collect_output(timeout)
-    |> format_result()
-  end
-
-  @spec write_image_to_temp_file(binary()) :: :ok | no_return()
-  defp write_image_to_temp_file(jpeg_data) do
     File.open!(temp_file(), [:write, :binary], & IO.binwrite(&1, jpeg_data))
-  end
 
-  @spec open_zbar_port() :: port()
-  defp open_zbar_port do
-    {:spawn_executable, zbar_binary()}
+    {:spawn_executable, to_charlist(zbar_binary())}
     |> Port.open([
       {:args, [temp_file()]},
       :binary,
@@ -58,6 +46,19 @@ defmodule Zbar do
       :use_stdio,
       :stderr_to_stdout
     ])
+    |> collect_output(timeout)
+    |> case do
+      {:ok, data} ->
+        symbols =
+          data
+          |> String.split("\n", trim: true)
+          |> Enum.map(&parse_symbol/1)
+
+        {:ok, symbols}
+
+      {:error, reason} ->
+        {:error, reason}
+    end
   end
 
   @spec temp_file() :: binary()
@@ -70,7 +71,6 @@ defmodule Zbar do
         {:ok, binary()}
         | {:error, :timeout}
         | {:error, binary()}
-        | no_return()
   defp collect_output(port, timeout, buffer \\ "") do
     receive do
       {^port, {:data, "Premature end of JPEG file\n"}} ->
@@ -87,19 +87,6 @@ defmodule Zbar do
         {:error, :timeout}
     end
   end
-
-  # `output` is the complete multi-line output collected from the `port`.
-  @spec format_result({:ok | :error, binary()}) ::
-        {:ok, [Zbar.Symbol.t()]}
-        | {:error, binary()}
-  defp format_result({:ok, output}) do
-    symbols =
-      output
-      |> String.split("\n", trim: true)
-      |> Enum.map(&parse_symbol/1)
-    {:ok, symbols}
-  end
-  defp format_result({:error, reason}), do: {:error, reason}
 
   # Accepts strings like:
   # type:QR-Code quality:1 points:40,40;40,250;250,250;250,40 data:UkVGMQ==
