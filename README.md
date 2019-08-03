@@ -24,7 +24,7 @@ installed by adding `:zbar` to your list of dependencies in `mix.exs`:
 
 ```elixir
 def deps do
-  [{:zbar, "~> 0.1.0"}]
+  [{:zbar, "~> 0.2"}]
 end
 ```
 

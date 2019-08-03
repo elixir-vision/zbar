@@ -4,7 +4,7 @@ defmodule Zbar.Mixfile do
   def project do
     [
       app: :zbar,
-      version: "0.2.0-dev",
+      version: "0.2.0",
       description: "Scan one or more barcodes from a JPEG image",
       elixir: "~> 1.4",
       make_targets: ["all"],
@@ -15,6 +15,8 @@ defmodule Zbar.Mixfile do
       compilers: [:elixir_make] ++ Mix.compilers,
       package: package(),
       deps: deps(),
+      dialyzer: [plt_add_apps: [:mix]],
+      docs: docs()
     ]
   end
 
@@ -25,12 +27,21 @@ defmodule Zbar.Mixfile do
   defp deps do
     [
       {:elixir_make, "~> 0.6", runtime: false},
-      {:dialyxir, "~> 0.5", only: :dev, runtime: false},
-      {:ex_doc, "~> 0.16", only: :dev, runtime: false},
+      {:dialyxir, "~> 1.0.0-rc.6", only: :dev, runtime: false},
+      {:ex_doc, "~> 0.21", only: :dev, runtime: false},
     ]
   end
 
-  defp package() do
+  defp docs do
+    [
+      main: "README",
+      extras: [
+        "README.md"
+      ]
+    ]
+  end
+
+  defp package do
     [
       files: [
         "lib",
@@ -42,7 +53,7 @@ defmodule Zbar.Mixfile do
       ],
       maintainers: ["Greg Mefford"],
       licenses: ["MIT"],
-      links: %{"GitHub" => "https://github.com/GregMefford/zbar-elixir"}
+      links: %{"GitHub" => "https://github.com/elixir-vision/zbar-elixir"}
     ]
   end
 end
