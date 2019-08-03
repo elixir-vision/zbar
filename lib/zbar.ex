@@ -73,7 +73,8 @@ defmodule Zbar do
         | no_return()
   defp collect_output(port, timeout, buffer \\ "") do
     receive do
-      {^port, {:data, "Premature end of JPEG file\n"}} -> #https://github.com/GregMefford/zbar-elixir/issues/1
+      {^port, {:data, "Premature end of JPEG file\n"}} ->
+        # Handles an error condition described in https://github.com/elixir-vision/zbar-elixir/issues/1
         collect_output(port, timeout, buffer)
       {^port, {:data, data}} ->
         collect_output(port, timeout, buffer <> to_string(data))
