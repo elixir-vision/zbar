@@ -4,7 +4,7 @@ defmodule Zbar.Mixfile do
   def project do
     [
       app: :zbar,
-      version: "0.2.0",
+      version: "0.2.1",
       description: "Scan one or more barcodes from a JPEG image",
       elixir: "~> 1.4",
       make_targets: ["all"],
