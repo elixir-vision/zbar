@@ -35,11 +35,12 @@ defmodule Zbar do
           | {:error, :timeout}
           | {:error, binary()}
   defp do_scan(jpeg_data, timeout) do
-    File.open!(temp_file(), [:write, :binary], &IO.binwrite(&1, jpeg_data))
+    temp_file_path = temp_file()
+    File.open!(temp_file_path, [:write, :binary], &IO.binwrite(&1, jpeg_data))
 
     {:spawn_executable, to_charlist(zbar_binary())}
     |> Port.open([
-      {:args, [temp_file()]},
+      {:args, [temp_file_path]},
       :binary,
       :stream,
       :exit_status,
@@ -61,7 +62,10 @@ defmodule Zbar do
   end
 
   @spec temp_file() :: binary()
-  defp temp_file, do: Path.join(System.tmp_dir!(), "zbar_image.jpg")
+  defp temp_file do
+    unique_path = to_string(UUID.uuid1()) <> "zbar_image.jpg"
+    Path.join(System.tmp_dir!(), unique_path)
+  end
 
   @spec zbar_binary() :: binary()
   defp zbar_binary, do: Path.join(:code.priv_dir(:zbar), "zbar_scanner")
