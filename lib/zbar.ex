@@ -55,9 +55,11 @@ defmodule Zbar do
           |> String.split("\n", trim: true)
           |> Enum.map(&parse_symbol/1)
 
+        File.rm(temp_file)
         {:ok, symbols}
 
       {:error, reason} ->
+        File.rm(temp_file)
         {:error, reason}
     end
   end
