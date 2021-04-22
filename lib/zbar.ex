@@ -35,7 +35,8 @@ defmodule Zbar do
         | {:error, :timeout}
         | {:error, binary()}
   defp do_scan(jpeg_data, timeout) do
-    File.open!(temp_file(), [:write, :binary], & IO.binwrite(&1, jpeg_data))
+    temp_file = temp_file()
+    File.open!(temp_file, [:write, :binary], &IO.binwrite(&1, jpeg_data))
 
     {:spawn_executable, to_charlist(zbar_binary())}
     |> Port.open([
@@ -62,7 +63,10 @@ defmodule Zbar do
   end
 
   @spec temp_file() :: binary()
-  defp temp_file, do: Path.join(System.tmp_dir!(), "zbar_image.jpg")
+  defp temp_file do
+    file = Nanoid.generate() <> ".jpg"
+    Path.join(System.tmp_dir!(), file)
+  end
 
   @spec zbar_binary() :: binary()
   defp zbar_binary, do: Path.join(:code.priv_dir(:zbar), "zbar_scanner")
@@ -76,13 +80,17 @@ defmodule Zbar do
       {^port, {:data, "Premature end of JPEG file\n"}} ->
         # Handles an error condition described in https://github.com/elixir-vision/zbar-elixir/issues/1
         collect_output(port, timeout, buffer)
+
       {^port, {:data, data}} ->
         collect_output(port, timeout, buffer <> to_string(data))
+
       {^port, {:exit_status, 0}} ->
         {:ok, buffer}
+
       {^port, {:exit_status, _}} ->
         {:error, buffer}
-    after timeout ->
+    after
+      timeout ->
         Port.close(port)
         {:error, :timeout}
     end
@@ -138,7 +146,7 @@ defmodule Zbar do
   defp parse_points(string) do
     string
     |> String.split(";")
-    |> Enum.map(& parse_point/1)
+    |> Enum.map(&parse_point/1)
   end
 
   @spec parse_point(binary()) :: Zbar.Symbol.point()
