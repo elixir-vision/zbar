@@ -20,9 +20,9 @@ defmodule Zbar do
   *  `{:error, binary()}` if there was an error in the scanning process
   """
   @spec scan(binary(), pos_integer()) ::
-        {:ok, list(Zbar.Symbol.t())}
-        | {:error, :timeout}
-        | {:error, binary()}
+          {:ok, list(Zbar.Symbol.t())}
+          | {:error, :timeout}
+          | {:error, binary()}
   def scan(jpeg_data, timeout \\ 5000) do
     # We run this in a `Task` so that `collect_output` can use `receive`
     # without interfering with the caller's mailbox.
@@ -31,15 +31,16 @@ defmodule Zbar do
   end
 
   @spec do_scan(binary(), pos_integer()) ::
-        {:ok, [Zbar.Symbol.t()]}
-        | {:error, :timeout}
-        | {:error, binary()}
+          {:ok, [Zbar.Symbol.t()]}
+          | {:error, :timeout}
+          | {:error, binary()}
   defp do_scan(jpeg_data, timeout) do
-    File.open!(temp_file(), [:write, :binary], & IO.binwrite(&1, jpeg_data))
+    temp_file = temp_file()
+    File.open!(temp_file, [:write, :binary], &IO.binwrite(&1, jpeg_data))
 
     {:spawn_executable, to_charlist(zbar_binary())}
     |> Port.open([
-      {:args, [temp_file()]},
+      {:args, [temp_file]},
       :binary,
       :stream,
       :exit_status,
@@ -54,35 +55,44 @@ defmodule Zbar do
           |> String.split("\n", trim: true)
           |> Enum.map(&parse_symbol/1)
 
+        File.rm(temp_file)
         {:ok, symbols}
 
       {:error, reason} ->
+        File.rm(temp_file)
         {:error, reason}
     end
   end
 
   @spec temp_file() :: binary()
-  defp temp_file, do: Path.join(System.tmp_dir!(), "zbar_image.jpg")
+  defp temp_file do
+    file = Nanoid.generate() <> ".jpg"
+    Path.join(System.tmp_dir!(), file)
+  end
 
   @spec zbar_binary() :: binary()
   defp zbar_binary, do: Path.join(:code.priv_dir(:zbar), "zbar_scanner")
 
   @spec collect_output(port(), pos_integer(), binary()) ::
-        {:ok, binary()}
-        | {:error, :timeout}
-        | {:error, binary()}
+          {:ok, binary()}
+          | {:error, :timeout}
+          | {:error, binary()}
   defp collect_output(port, timeout, buffer \\ "") do
     receive do
       {^port, {:data, "Premature end of JPEG file\n"}} ->
         # Handles an error condition described in https://github.com/elixir-vision/zbar-elixir/issues/1
         collect_output(port, timeout, buffer)
+
       {^port, {:data, data}} ->
         collect_output(port, timeout, buffer <> to_string(data))
+
       {^port, {:exit_status, 0}} ->
         {:ok, buffer}
+
       {^port, {:exit_status, _}} ->
         {:error, buffer}
-    after timeout ->
+    after
+      timeout ->
         Port.close(port)
         {:error, :timeout}
     end
@@ -103,19 +113,27 @@ defmodule Zbar do
     string
     |> String.split(" ")
     |> Enum.reduce(%Symbol{}, fn item, acc ->
-      [key, value] = String.split(item, ":", parts: 2)
-      case key do
-        "type" ->
-          %Symbol{acc | type: parse_type(value)}
+      case String.split(item, ":", parts: 2) do
+        [key, value] ->
+          case key do
+            "type" ->
+              %Symbol{acc | type: parse_type(value)}
 
-        "quality" ->
-          %Symbol{acc | quality: String.to_integer(value)}
+            "quality" ->
+              %Symbol{acc | quality: String.to_integer(value)}
 
-        "points" ->
-          %Symbol{acc | points: parse_points(value)}
+            "points" ->
+              %Symbol{acc | points: parse_points(value)}
 
-        "data" ->
-          %Symbol{acc | data: Base.decode64!(value)}
+            "data" ->
+              %Symbol{acc | data: Base.decode64!(value)}
+
+            _ ->
+              acc
+          end
+
+        _ ->
+          acc
       end
     end)
   end
@@ -138,7 +156,7 @@ defmodule Zbar do
   defp parse_points(string) do
     string
     |> String.split(";")
-    |> Enum.map(& parse_point/1)
+    |> Enum.map(&parse_point/1)
   end
 
   @spec parse_point(binary()) :: Zbar.Symbol.point()
