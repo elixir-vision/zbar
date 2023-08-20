@@ -15,7 +15,7 @@ defmodule Zbar.Mixfile do
       compilers: [:elixir_make] ++ Mix.compilers(),
       package: package(),
       deps: deps(),
-      dialyzer: [plt_add_apps: [:mix]],
+      dialyzer: [plt_add_apps: [:mix, :nanoid]],
       docs: docs()
     ]
   end
@@ -27,9 +27,9 @@ defmodule Zbar.Mixfile do
   defp deps do
     [
       {:elixir_make, "~> 0.6", runtime: false},
-      {:dialyxir, "~> 1.0.0-rc.6", only: :dev, runtime: false},
+      {:dialyxir, "~> 1.3", only: :dev, runtime: false},
       {:ex_doc, "~> 0.21", only: :dev, runtime: false},
-      {:nanoid, "~> 2.0.5", runtime: false}
+      {:nanoid, "~> 2.0", runtime: false}
     ]
   end
 
